@@ -1,0 +1,29 @@
+models:
+  - name: Config
+    properties:
+      - name: identifier
+        type: string
+      - name: upstreams
+        type: Model.Upstream.Array
+        optional: true
+      - name: submodules
+        type: Array<Model<Submodule>>
+        optional: true
+      - name: features
+        type: Array<Model<Feature>>
+        optional: true
+  - name: Upstream
+    properties:
+      - name: name
+        type: string
+      - name: url
+        type: string
+  - name: Submodule
+    properties:
+      - name: name
+        type: string
+      - name: path
+        type: string
+      - name: url
+        type: string
+        optional: true
