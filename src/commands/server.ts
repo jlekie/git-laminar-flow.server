@@ -7,7 +7,7 @@ import * as Bluebird from 'bluebird';
 import * as OS from 'os';
 import * as Path from 'path';
 
-import * as Faker from '@faker-js/faker';
+import Faker from '@faker-js/faker';
 
 import { createHapiServer } from '../lib/hapi';
 import { loadConfig } from '../lib/config';
