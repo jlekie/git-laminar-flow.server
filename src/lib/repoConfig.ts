@@ -19,7 +19,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate'>>;
 export class Config {
     public identifier: string;
     public upstreams: Array<{ name: string, url: string }>;
@@ -30,6 +30,11 @@ export class Config {
     public supports: Support[];
     public included: string[];
     public excluded: string[];
+    public featureMessageTemplate?: string;
+    public releaseMessageTemplate?: string;
+    public hotfixMessageTemplate?: string;
+    public releaseTagTemplate?: string;
+    public hotfixTagTemplate?: string;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -74,6 +79,11 @@ export class Config {
         this.supports = params.supports;
         this.included = params.included;
         this.excluded = params.excluded;
+        this.featureMessageTemplate = params.featureMessageTemplate;
+        this.releaseMessageTemplate = params.releaseMessageTemplate;
+        this.hotfixMessageTemplate = params.hotfixMessageTemplate;
+        this.releaseTagTemplate = params.releaseTagTemplate;
+        this.hotfixTagTemplate = params.hotfixTagTemplate;
     }
 
     public toJSON() {
@@ -111,12 +121,11 @@ export class Submodule {
 export interface Submodule extends SubmoduleBase {}
 applyMixins(Submodule, [ SubmoduleBase ]);
 
-export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Feature, 'sources'>>;
+export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha'>;
 export class Feature {
     public name: string;
     public branchName: string;
     public sourceSha: string;
-    public sources: string[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigFeatureSchema.parse(value));
@@ -131,7 +140,6 @@ export class Feature {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
-        this.sources = params.sources ?? [];
     }
 
     public toJSON() {
@@ -141,12 +149,11 @@ export class Feature {
 export interface Feature extends FeatureBase {}
 applyMixins(Feature, [ FeatureBase ]);
 
-export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Release, 'sources' | 'intermediate'>>;
+export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Release, 'intermediate'>>;
 export class Release {
     public name: string;
     public branchName: string;
     public sourceSha: string;
-    public sources: string[];
     public intermediate: boolean;
 
     public static parse(value: unknown) {
@@ -162,7 +169,6 @@ export class Release {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
-        this.sources = params.sources ?? [];
         this.intermediate = params.intermediate ?? false;
     }
 
@@ -173,12 +179,11 @@ export class Release {
 export interface Release extends ReleaseBase {}
 applyMixins(Release, [ ReleaseBase ]);
 
-export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Hotfix, 'sources' | 'intermediate'>>;
+export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Hotfix, 'intermediate'>>;
 export class Hotfix {
     public name: string;
     public branchName: string;
     public sourceSha: string;
-    public sources: string[];
     public intermediate: boolean;
 
     public static parse(value: unknown) {
@@ -194,7 +199,6 @@ export class Hotfix {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
-        this.sources = params.sources ?? [];
         this.intermediate = params.intermediate ?? false;
     }
 
