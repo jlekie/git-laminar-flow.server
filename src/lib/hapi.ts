@@ -73,10 +73,12 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
             handler: async (req, h) => {
                 const config = await registry.repoConfigExists(req.params.namespace, req.params.name)
                     ? await registry.loadRepoConfig(req.params.namespace, req.params.name)
-                    : RepoConfig.createNew();
+                    : ('ensure' in req.query ? RepoConfig.createNew() : undefined);
 
-                return h.response(config.toHash())
-                    .etag(config.calculateHash());
+                if (config)
+                    return h.response(config.toHash()).etag(config.calculateHash());
+                else
+                    return h.response().code(404);
             }
         });
 
@@ -96,7 +98,7 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
                 const configHash = config.calculateHash();
 
                 if (configHash !== sourceConfigHash) {
-                    console.log('Saving config...');
+                    console.log(`Saving config <${configHash}>`);
                     await registry.saveRepoConfig(req.params.namespace, req.params.name, config);
                 }
 

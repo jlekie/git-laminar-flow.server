@@ -121,11 +121,12 @@ export class Submodule {
 export interface Submodule extends SubmoduleBase {}
 applyMixins(Submodule, [ SubmoduleBase ]);
 
-export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha'>;
+export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha' | 'upstream'>;
 export class Feature {
     public name: string;
     public branchName: string;
     public sourceSha: string;
+    public upstream?: string;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigFeatureSchema.parse(value));
@@ -140,6 +141,7 @@ export class Feature {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
+        this.upstream = params.upstream;
     }
 
     public toJSON() {
@@ -149,11 +151,12 @@ export class Feature {
 export interface Feature extends FeatureBase {}
 applyMixins(Feature, [ FeatureBase ]);
 
-export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Release, 'intermediate'>>;
+export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Release, 'intermediate'>>;
 export class Release {
     public name: string;
     public branchName: string;
     public sourceSha: string;
+    public upstream?: string;
     public intermediate: boolean;
 
     public static parse(value: unknown) {
@@ -169,6 +172,7 @@ export class Release {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
+        this.upstream = params.upstream;
         this.intermediate = params.intermediate ?? false;
     }
 
@@ -179,11 +183,12 @@ export class Release {
 export interface Release extends ReleaseBase {}
 applyMixins(Release, [ ReleaseBase ]);
 
-export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Hotfix, 'intermediate'>>;
+export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Hotfix, 'intermediate'>>;
 export class Hotfix {
     public name: string;
     public branchName: string;
     public sourceSha: string;
+    public upstream?: string;
     public intermediate: boolean;
 
     public static parse(value: unknown) {
@@ -199,6 +204,7 @@ export class Hotfix {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
+        this.upstream = params.upstream;
         this.intermediate = params.intermediate ?? false;
     }
 
@@ -209,12 +215,13 @@ export class Hotfix {
 export interface Hotfix extends HotfixBase {}
 applyMixins(Hotfix, [ HotfixBase ]);
 
-export type SupportParams = Pick<Support, 'name' | 'masterBranchName' | 'developBranchName' | 'sourceSha' | 'features' | 'releases' | 'hotfixes'>;
+export type SupportParams = Pick<Support, 'name' | 'masterBranchName' | 'developBranchName' | 'sourceSha' | 'features' | 'releases' | 'hotfixes' | 'upstream'>;
 export class Support {
     public name: string;
     public masterBranchName: string;
     public developBranchName: string;
     public sourceSha: string;
+    public upstream?: string;
 
     public features: Feature[];
     public releases: Release[];
@@ -237,6 +244,7 @@ export class Support {
         this.masterBranchName = params.masterBranchName;
         this.developBranchName = params.developBranchName;
         this.sourceSha = params.sourceSha;
+        this.upstream = params.upstream;
 
         this.features = params.features;
         this.releases = params.releases;
