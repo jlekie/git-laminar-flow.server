@@ -13,6 +13,10 @@ module.exports = {
   ],
   rules: {
     '@typescript-eslint/no-floating-promises': 2,
+    '@typescript-eslint/no-misused-promises': 2,
+    "@typescript-eslint/no-inferrable-types": 0,
+    "@typescript-eslint/no-empty-function": 1,
+    "@typescript-eslint/no-empty-interface": 0,
     'no-console': 1
   }
 }

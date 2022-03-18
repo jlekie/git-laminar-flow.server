@@ -141,12 +141,13 @@ export class Feature {
 export interface Feature extends FeatureBase {}
 applyMixins(Feature, [ FeatureBase ]);
 
-export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Release, 'sources'>>;
+export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Release, 'sources' | 'intermediate'>>;
 export class Release {
     public name: string;
     public branchName: string;
     public sourceSha: string;
     public sources: string[];
+    public intermediate: boolean;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigReleaseSchema.parse(value));
@@ -162,6 +163,7 @@ export class Release {
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
         this.sources = params.sources ?? [];
+        this.intermediate = params.intermediate ?? false;
     }
 
     public toJSON() {
@@ -171,12 +173,13 @@ export class Release {
 export interface Release extends ReleaseBase {}
 applyMixins(Release, [ ReleaseBase ]);
 
-export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Hotfix, 'sources'>>;
+export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha'> & Partial<Pick<Hotfix, 'sources' | 'intermediate'>>;
 export class Hotfix {
     public name: string;
     public branchName: string;
     public sourceSha: string;
     public sources: string[];
+    public intermediate: boolean;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigHotfixSchema.parse(value));
@@ -192,6 +195,7 @@ export class Hotfix {
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
         this.sources = params.sources ?? [];
+        this.intermediate = params.intermediate ?? false;
     }
 
     public toJSON() {
