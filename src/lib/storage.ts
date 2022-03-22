@@ -65,6 +65,7 @@ export abstract class StorageBase {
     public abstract configExists(namespace: string, name: string): Promise<boolean>;
     public abstract loadConfig(namespace: string, name: string): Promise<RepoConfig>;
     public abstract saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void>;
+    public abstract deleteConfig(namespace: string, name: string): Promise<void>;
     // public abstract lockConfig(namespace: string, name: string): Promise<void>;
     // public abstract unlockConfig(namespace: string, name: string): Promise<void>;
 }
@@ -122,6 +123,9 @@ export class FileStorage extends StorageBase {
         throw new Error('Not Implemented');
     }
     public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
+        throw new Error('Not Implemented');
+    }
+    public async deleteConfig(namespace: string, name: string): Promise<void> {
         throw new Error('Not Implemented');
     }
 
@@ -243,5 +247,8 @@ export class AzureBlobStorage extends StorageBase {
                 blobContentType: 'application/json'
             }
         });
+    }
+    public async deleteConfig(namespace: string, name: string): Promise<void> {
+        throw new Error('Not Implemented');
     }
 }

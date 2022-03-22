@@ -37,6 +37,13 @@ export class Registry {
 
         await backend.saveConfig(namespace, name, config);
     }
+    public async deleteRepoConfig(namespace: string, name: string) {
+        const backend = this.config.storageBackends.find(b => b.name === 'azure');
+        if (!backend)
+            throw new Error('Backend not found');
+
+        await backend.deleteConfig(namespace, name);
+    }
 
     public async aquireRepoConfig(namespace: string, name: string, cb: (config: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
         const backend = this.config.storageBackends.find(b => b.name === 'azure');

@@ -105,5 +105,27 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
                 return h.response();
             }
         });
+
+        server.route({
+            method: 'DELETE',
+            path: '/{namespace}/{name}',
+            handler: async (req, h) => {
+                if (await registry.repoConfigExists(req.params.namespace, req.params.name)) {
+                    const sourceConfig = await registry.loadRepoConfig(req.params.namespace, req.params.name);
+
+                    const sourceConfigHash = sourceConfig?.calculateHash();
+
+                    if (sourceConfigHash && sourceConfigHash !== req.headers['if-match'])
+                        return h.response().code(412);
+
+                    await registry.deleteRepoConfig(req.params.namespace, req.params.name);
+
+                    return h.response();
+                }
+                else {
+                    return h.response().code(404);
+                }
+            }
+        });
     }
 }
