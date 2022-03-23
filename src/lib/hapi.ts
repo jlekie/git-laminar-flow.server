@@ -1,6 +1,7 @@
 import * as Zod from 'zod';
 
 import * as Hapi from '@hapi/hapi';
+import * as BasicAuth from '@hapi/basic';
 
 import * as Glf from '@jlekie/git-laminar-flow';
 
@@ -8,6 +9,8 @@ import { loadNpmPackage } from './package';
 import { Config } from './config';
 import { Config as RepoConfig } from './repoConfig';
 import { Registry } from './registry';
+
+export type T = Hapi.Auth
 
 export interface CreateHapiServerParams {
     serverName: string;
@@ -19,6 +22,8 @@ export interface CreateHapiServerParams {
 export async function createHapiServer({ host, port, serverName, config, registry }: CreateHapiServerParams) {
     const npmPackage = await loadNpmPackage();
 
+    const apiKey = config.apiKey ?? process.env['API_KEY'];
+
     const server = Hapi.server({
         host,
         port,
@@ -27,6 +32,20 @@ export async function createHapiServer({ host, port, serverName, config, registr
         //     request: [ 'error' ]
         // }
     });
+
+    if (apiKey) {
+        await server.register(BasicAuth);
+        server.auth.strategy('simple', 'basic', {
+            validate: async (req: Hapi.Request, username: string, password: string) => {
+                return {
+                    isValid: password === apiKey,
+                    credentials: {
+                        name: username
+                    }
+                }
+            }
+        });
+    }
 
     server.route({
         method: 'GET',
@@ -47,16 +66,17 @@ export async function createHapiServer({ host, port, serverName, config, registr
             prefix: '/v1'
         },
         options: {
-            registry
+            registry,
+            auth: apiKey && 'simple'
         }
     });
 
     return server;
 }
 
-export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
+export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
     name: 'api',
-    register: async (server, { registry }) => {
+    register: async (server, { registry, auth }) => {
         server.route({
             method: 'GET',
             path: '/',
@@ -79,6 +99,9 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
                     return h.response(config.toHash()).etag(config.calculateHash());
                 else
                     return h.response().code(404);
+            },
+            options: {
+                auth
             }
         });
 
@@ -103,6 +126,9 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
                 }
 
                 return h.response();
+            },
+            options: {
+                auth
             }
         });
 
@@ -125,6 +151,9 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry }> = {
                 else {
                     return h.response().code(404);
                 }
+            },
+            options: {
+                auth
             }
         });
     }
