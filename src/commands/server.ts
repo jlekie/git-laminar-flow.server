@@ -16,7 +16,7 @@ import { createRegistry } from '../lib/registry';
 export class StartCommand extends Command {
     static paths = [['start']];
 
-    config = Option.String('--config', Path.resolve(OS.homedir(), '.gitflow/server.yml'));
+    config = Option.String('--config', Path.resolve(OS.homedir(), '.glf/server.yml'));
 
     host = Option.String('--hostname', '0.0.0.0');
     port = Option.String('--port', '8080', { validator: Typanion.isNumber() });
