@@ -19,9 +19,10 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed'>>;
 export class Config {
     public identifier: string;
+    public managed: boolean;
     public upstreams: Array<{ name: string, url: string }>;
     public submodules: Submodule[];
     public features: Feature[];
@@ -84,6 +85,8 @@ export class Config {
         this.hotfixMessageTemplate = params.hotfixMessageTemplate;
         this.releaseTagTemplate = params.releaseTagTemplate;
         this.hotfixTagTemplate = params.hotfixTagTemplate;
+
+        this.managed = params.managed ?? true;
     }
 
     public toJSON() {
