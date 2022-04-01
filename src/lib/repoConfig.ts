@@ -19,7 +19,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'tags'>>;
 export class Config {
     public identifier: string;
     public managed: boolean;
@@ -36,6 +36,7 @@ export class Config {
     public hotfixMessageTemplate?: string;
     public releaseTagTemplate?: string;
     public hotfixTagTemplate?: string;
+    public tags: string[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -50,7 +51,8 @@ export class Config {
             hotfixes: value.hotfixes?.map(i => Hotfix.fromSchema(i)) ?? [],
             supports: value.supports?.map(i => Support.fromSchema(i)) ?? [],
             included: value.included?.slice() ?? [],
-            excluded: value.excluded?.slice() ?? []
+            excluded: value.excluded?.slice() ?? [],
+            tags: value.tags?.slice() ?? []
         });
 
         return config;
@@ -66,7 +68,8 @@ export class Config {
             hotfixes: [],
             supports: [],
             included: [],
-            excluded: []
+            excluded: [],
+            tags: []
         });
     }
 
@@ -87,6 +90,8 @@ export class Config {
         this.hotfixTagTemplate = params.hotfixTagTemplate;
 
         this.managed = params.managed ?? true;
+
+        this.tags = params.tags ?? [];
     }
 
     public toJSON() {
@@ -96,18 +101,20 @@ export class Config {
 export interface Config extends ConfigBase {}
 applyMixins(Config, [ ConfigBase ]);
 
-export type SubmoduleParams = Pick<Submodule, 'name' | 'path' | 'url'>;
+export type SubmoduleParams = Pick<Submodule, 'name' | 'path' | 'url'> & Partial<Pick<Submodule, 'tags'>>;
 export class Submodule {
     public name: string;
     public path: string;
     public url?: string;
+    public tags: string[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSubmoduleSchema.parse(value));
     }
     public static fromSchema(value: Zod.infer<typeof ConfigSubmoduleSchema>) {
         return new this({
-            ...value
+            ...value,
+            tags: value.tags?.slice() ?? []
         });
     }
 
@@ -115,6 +122,7 @@ export class Submodule {
         this.name = params.name;
         this.path = params.path;
         this.url = params.url;
+        this.tags = params.tags ?? [];
     }
 
     public toJSON() {
