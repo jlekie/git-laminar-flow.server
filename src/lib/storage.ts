@@ -299,7 +299,7 @@ export class S3Storage extends StorageBase {
         if (!accessKeyId)
             throw new Error('S3 access key not defined');
 
-        const accessKeySecret = value.accessKeyId ?? process.env['S3_ACCESS_KEY_SECRET'];
+        const accessKeySecret = value.accessKeySecret ?? process.env['S3_ACCESS_KEY_SECRET'];
         if (!accessKeySecret)
             throw new Error('S3 access secret not defined');
 
