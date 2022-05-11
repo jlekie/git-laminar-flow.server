@@ -7,8 +7,8 @@ import * as Yaml from 'js-yaml';
 import { Readable } from 'stream';
 
 import { BlobServiceClient } from '@azure/storage-blob';
-
 import { S3, GetObjectCommand, HeadObjectCommand, ListObjectsCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
+import Axios from 'axios';
 
 import { ConfigSchema as RepoConfigSchema } from '@jlekie/git-laminar-flow';
 
@@ -42,7 +42,14 @@ export const S3StorageSchema = Zod.object({
     accessKeyId: Zod.string().optional(),
     accessKeySecret: Zod.string().optional()
 });
-export const StorageSchema = Zod.union([ FileStorageSchema, AzureBlobStorageSchema, S3StorageSchema ]);
+export const GlfsStorageSchema = Zod.object({
+    storageType: Zod.literal('glfs'),
+    name: Zod.string(),
+    patterns: Zod.string().array().optional(),
+    url: Zod.string(),
+    apiKey: Zod.string()
+});
+export const StorageSchema = Zod.union([ FileStorageSchema, AzureBlobStorageSchema, S3StorageSchema, GlfsStorageSchema ]);
 
 export interface LoadedConfig {
     readonly config: RepoConfig;
@@ -68,6 +75,8 @@ export abstract class StorageBase {
             return AzureBlobStorage.fromSchema(value, params);
         else if (value.storageType === 's3')
             return S3Storage.fromSchema(value, params);
+        else if (value.storageType === 'glfs')
+            return GlfsStorage.fromSchema(value, params);
         else
             throw new Error(`Unknown storage type`);
     }
@@ -350,6 +359,66 @@ export class S3Storage extends StorageBase {
             Body: JSON.stringify(config),
             ContentType: 'application/json'
         }));
+    }
+    public async deleteConfig(namespace: string, name: string): Promise<void> {
+        throw new Error('Not Implemented');
+    }
+}
+
+export class GlfsStorage extends StorageBase {
+    public readonly url: string;
+    public readonly apiKey: string;
+
+    public static parse(value: unknown, params: Lazy<{ parentConfig: Config }>) {
+        return this.fromSchema(GlfsStorageSchema.parse(value), params);
+    }
+    public static fromSchema(value: Zod.infer<typeof GlfsStorageSchema>, params: Lazy<{ parentConfig: Config }>) {
+        return new GlfsStorage({
+            name: value.name,
+            patterns: value.patterns?.slice() ?? [ '**' ],
+            url: value.url,
+            apiKey: value.apiKey,
+            ...params
+        });
+    }
+
+    public constructor(params: ConstructorParams<GlfsStorage, 'name' | 'patterns' | 'url' | 'apiKey'> & Lazy<{ parentConfig: Config }>) {
+        super(params);
+
+        this.url = params.url;
+        this.apiKey = params.apiKey
+    }
+
+    public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+        throw new Error('Not Implemented');
+    }
+    public async configExists(namespace: string, name: string): Promise<boolean> {
+        return await Axios.head(`${this.url}/v1/${namespace}/${name}`, {
+            auth: {
+                username: 'glf.server',
+                password: this.apiKey
+            }
+        }).then(() => true).catch(() => false);
+    }
+    public async loadConfig(namespace: string, name: string): Promise<RepoConfig> {
+        const response = await Axios.get(`${this.url}/v1/${namespace}/${name}`, {
+            auth: {
+                username: 'glf.server',
+                password: this.apiKey
+            }
+        });
+
+        const config = RepoConfig.parse(response.data);
+
+        return config;
+    }
+    public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
+        await Axios.put(`${this.url}/v1/${namespace}/${name}`, config.toHash(), {
+            auth: {
+                username: 'glf.server',
+                password: this.apiKey
+            }
+        });
     }
     public async deleteConfig(namespace: string, name: string): Promise<void> {
         throw new Error('Not Implemented');
