@@ -4,22 +4,28 @@ import * as Path from 'path';
 import * as FS from 'fs-extra';
 import * as Yaml from 'js-yaml';
 
+import { Readable } from 'stream';
+
 import { BlobServiceClient } from '@azure/storage-blob';
+
+import { S3, GetObjectCommand, HeadObjectCommand, ListObjectsCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
 
 import { ConfigSchema as RepoConfigSchema } from '@jlekie/git-laminar-flow';
 
 import { Config } from './config';
 import { Config as RepoConfig } from './repoConfig';
-import { ConstructorParams, Lazy } from './misc';
+import { ConstructorParams, Lazy, streamToString } from './misc';
 
 export const FileStorageSchema = Zod.object({
     storageType: Zod.literal('file'),
     name: Zod.string(),
+    patterns: Zod.string().array().optional(),
     reposPath: Zod.string().optional()
 });
 export const AzureBlobStorageSchema = Zod.object({
     storageType: Zod.literal('azureBlobStorage'),
     name: Zod.string(),
+    patterns: Zod.string().array().optional(),
     containerName: Zod.string(),
     leaseId: Zod.string(),
     // tenantId: Zod.string().optional(),
@@ -27,7 +33,16 @@ export const AzureBlobStorageSchema = Zod.object({
     // clientSecret: Zod.string().optional(),
     connectionString: Zod.string().optional()
 });
-export const StorageSchema = Zod.union([ FileStorageSchema, AzureBlobStorageSchema ]);
+export const S3StorageSchema = Zod.object({
+    storageType: Zod.literal('s3'),
+    name: Zod.string(),
+    patterns: Zod.string().array().optional(),
+    endpoint: Zod.string().optional(),
+    bucket: Zod.string(),
+    accessKeyId: Zod.string().optional(),
+    accessKeySecret: Zod.string().optional()
+});
+export const StorageSchema = Zod.union([ FileStorageSchema, AzureBlobStorageSchema, S3StorageSchema ]);
 
 export interface LoadedConfig {
     readonly config: RepoConfig;
@@ -36,6 +51,7 @@ export interface LoadedConfig {
 
 export abstract class StorageBase {
     public readonly name: string;
+    public readonly patterns: readonly string[];
 
     readonly #parentConfig: () => Config;
     public get parentConfig() {
@@ -50,12 +66,15 @@ export abstract class StorageBase {
             return FileStorage.fromSchema(value, params);
         else if (value.storageType === 'azureBlobStorage')
             return AzureBlobStorage.fromSchema(value, params);
+        else if (value.storageType === 's3')
+            return S3Storage.fromSchema(value, params);
         else
             throw new Error(`Unknown storage type`);
     }
 
-    public constructor(params: ConstructorParams<AzureBlobStorage, 'name'> & Lazy<{ parentConfig: Config }>) {
+    public constructor(params: ConstructorParams<AzureBlobStorage, 'name', 'patterns'> & Lazy<{ parentConfig: Config }>) {
         this.name = params.name;
+        this.patterns = params.patterns ?? [];
 
         this.#parentConfig = params.parentConfig;
     }
@@ -79,12 +98,13 @@ export class FileStorage extends StorageBase {
     public static fromSchema(value: Zod.infer<typeof FileStorageSchema>, params: Lazy<{ parentConfig: Config }>) {
         return new FileStorage({
             name: value.name,
+            patterns: value.patterns?.slice() ?? [ '**' ],
             reposPath: value.reposPath ?? '.',
             ...params
         });
     }
 
-    public constructor(params: ConstructorParams<FileStorage, 'name' | 'reposPath'> & Lazy<{ parentConfig: Config }>) {
+    public constructor(params: ConstructorParams<FileStorage, 'name' | 'patterns' | 'reposPath'> & Lazy<{ parentConfig: Config }>) {
         super(params);
 
         this.reposPath = params.reposPath;
@@ -169,6 +189,7 @@ export class AzureBlobStorage extends StorageBase {
 
         return new AzureBlobStorage({
             name: value.name,
+            patterns: value.patterns?.slice() ?? [ '**' ],
             containerName: value.containerName,
             leaseId: value.leaseId,
             // tenantId,
@@ -179,7 +200,7 @@ export class AzureBlobStorage extends StorageBase {
         });
     }
 
-    public constructor(params: ConstructorParams<AzureBlobStorage, 'name' | 'containerName' | 'leaseId' | 'connectionString'> & Lazy<{ parentConfig: Config }>) {
+    public constructor(params: ConstructorParams<AzureBlobStorage, 'name' | 'patterns' | 'containerName' | 'leaseId' | 'connectionString'> & Lazy<{ parentConfig: Config }>) {
         super(params);
 
         this.containerName = params.containerName;
@@ -247,6 +268,88 @@ export class AzureBlobStorage extends StorageBase {
                 blobContentType: 'application/json'
             }
         });
+    }
+    public async deleteConfig(namespace: string, name: string): Promise<void> {
+        throw new Error('Not Implemented');
+    }
+}
+
+export class S3Storage extends StorageBase {
+    public readonly endpoint?: string;
+    public readonly bucket: string;
+    public readonly accessKeyId: string;
+    public readonly accessKeySecret: string;
+
+    readonly #s3Client: S3;
+
+    public static parse(value: unknown, params: Lazy<{ parentConfig: Config }>) {
+        return this.fromSchema(S3StorageSchema.parse(value), params);
+    }
+    public static fromSchema(value: Zod.infer<typeof S3StorageSchema>, params: Lazy<{ parentConfig: Config }>) {
+        const accessKeyId = value.accessKeyId ?? process.env['S3_ACCESS_KEY_ID'];
+        if (!accessKeyId)
+            throw new Error('S3 access key not defined');
+
+        const accessKeySecret = value.accessKeyId ?? process.env['S3_ACCESS_KEY_SECRET'];
+        if (!accessKeySecret)
+            throw new Error('S3 access secret not defined');
+
+        return new S3Storage({
+            name: value.name,
+            patterns: value.patterns?.slice() ?? [ '**' ],
+            endpoint: value.endpoint,
+            bucket: value.bucket,
+            accessKeyId,
+            accessKeySecret,
+            ...params
+        });
+    }
+
+    public constructor(params: ConstructorParams<S3Storage, 'name' | 'patterns' | 'bucket' | 'accessKeyId' | 'accessKeySecret', 'endpoint'> & Lazy<{ parentConfig: Config }>) {
+        super(params);
+
+        this.endpoint = params.endpoint;
+        this.bucket = params.bucket
+        this.accessKeyId = params.accessKeyId;
+        this.accessKeySecret = params.accessKeySecret;
+
+        this.#s3Client = new S3({
+            endpoint: this.endpoint,
+            region: 'us-east-1',
+            credentials: {
+                accessKeyId: this.accessKeyId,
+                secretAccessKey: this.accessKeySecret
+            }
+        });
+    }
+
+    public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+        throw new Error('Not Implemented');
+    }
+    public async configExists(namespace: string, name: string): Promise<boolean> {
+        return await this.#s3Client.send(new HeadObjectCommand({
+            Bucket: this.bucket,
+            Key: `${namespace}/${name}.json`
+        })).then(() => true).catch(() => false);
+    }
+    public async loadConfig(namespace: string, name: string): Promise<RepoConfig> {
+        const response = await this.#s3Client.send(new GetObjectCommand({
+            Bucket: this.bucket,
+            Key: `${namespace}/${name}.json`
+        }));
+
+        const content = await streamToString(response.Body as Readable);
+        const config = RepoConfig.parse(JSON.parse(content));
+
+        return config;
+    }
+    public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
+        await this.#s3Client.send(new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: `${namespace}/${name}.json`,
+            Body: JSON.stringify(config),
+            ContentType: 'application/json'
+        }));
     }
     public async deleteConfig(namespace: string, name: string): Promise<void> {
         throw new Error('Not Implemented');
