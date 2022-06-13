@@ -3,8 +3,8 @@ import * as Zod from 'zod';
 import { v4 as Uuid } from 'uuid';
 
 import {
-    ConfigSchema, ConfigSubmoduleSchema, ConfigFeatureSchema, ConfigReleaseSchema, ConfigHotfixSchema, ConfigSupportSchema,
-    ConfigBase, SubmoduleBase, FeatureBase, ReleaseBase, HotfixBase, SupportBase
+    ConfigSchema, ConfigSubmoduleSchema, ConfigFeatureSchema, ConfigReleaseSchema, ConfigHotfixSchema, ConfigSupportSchema, ConfigIntegrationSchema, ConfigTaggingSchema, ConfigMessageTemplate, ConfigTagTemplate,
+    ConfigBase, SubmoduleBase, FeatureBase, ReleaseBase, HotfixBase, SupportBase, IntegrationBase, TaggingBase, MessageTemplateBase, TagTemplateBase
 } from '@jlekie/git-laminar-flow';
 
 function applyMixins(derivedCtor: any, constructors: any[]) {
@@ -19,10 +19,11 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'tags'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'version' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates'>>;
 export class Config {
     public identifier: string;
     public managed: boolean;
+    public version?: string;
     public upstreams: Array<{ name: string, url: string }>;
     public submodules: Submodule[];
     public features: Feature[];
@@ -37,6 +38,9 @@ export class Config {
     public releaseTagTemplate?: string;
     public hotfixTagTemplate?: string;
     public tags: string[];
+    public integrations: Integration[]
+    public commitMessageTemplates: MessageTemplate[];
+    public tagTemplates: TagTemplate[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -52,7 +56,10 @@ export class Config {
             supports: value.supports?.map(i => Support.fromSchema(i)) ?? [],
             included: value.included?.slice() ?? [],
             excluded: value.excluded?.slice() ?? [],
-            tags: value.tags?.slice() ?? []
+            tags: value.tags?.slice() ?? [],
+            integrations: value.integrations?.map(i => Integration.fromSchema(i)),
+            commitMessageTemplates: value.commitMessageTemplates?.map(i => MessageTemplate.fromSchema(i)),
+            tagTemplates: value.tagTemplates?.map(i => TagTemplate.fromSchema(i))
         });
 
         return config;
@@ -90,8 +97,14 @@ export class Config {
         this.hotfixTagTemplate = params.hotfixTagTemplate;
 
         this.managed = params.managed ?? true;
+        this.version = params.version;
 
         this.tags = params.tags ?? [];
+
+        this.integrations = params.integrations ?? [];
+
+        this.commitMessageTemplates = params.commitMessageTemplates ?? [];
+        this.tagTemplates = params.tagTemplates ?? [];
     }
 
     public toJSON() {
@@ -132,19 +145,21 @@ export class Submodule {
 export interface Submodule extends SubmoduleBase {}
 applyMixins(Submodule, [ SubmoduleBase ]);
 
-export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha' | 'upstream'>;
+export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Feature, 'tags'>>;
 export class Feature {
     public name: string;
     public branchName: string;
     public sourceSha: string;
     public upstream?: string;
+    public tags: Tagging[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigFeatureSchema.parse(value));
     }
     public static fromSchema(value: Zod.infer<typeof ConfigFeatureSchema>) {
         return new this({
-            ...value
+            ...value,
+            tags: value.tags?.map(t => Tagging.fromSchema(t))
         });
     }
 
@@ -153,6 +168,7 @@ export class Feature {
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
         this.upstream = params.upstream;
+        this.tags = params.tags ?? [];
     }
 
     public toJSON() {
@@ -162,20 +178,22 @@ export class Feature {
 export interface Feature extends FeatureBase {}
 applyMixins(Feature, [ FeatureBase ]);
 
-export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Release, 'intermediate'>>;
+export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Release, 'intermediate' | 'tags'>>;
 export class Release {
     public name: string;
     public branchName: string;
     public sourceSha: string;
     public upstream?: string;
     public intermediate: boolean;
+    public tags: Tagging[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigReleaseSchema.parse(value));
     }
     public static fromSchema(value: Zod.infer<typeof ConfigReleaseSchema>) {
         return new this({
-            ...value
+            ...value,
+            tags: value.tags?.map(t => Tagging.fromSchema(t))
         });
     }
 
@@ -185,6 +203,7 @@ export class Release {
         this.sourceSha = params.sourceSha;
         this.upstream = params.upstream;
         this.intermediate = params.intermediate ?? false;
+        this.tags = params.tags ?? [];
     }
 
     public toJSON() {
@@ -194,20 +213,22 @@ export class Release {
 export interface Release extends ReleaseBase {}
 applyMixins(Release, [ ReleaseBase ]);
 
-export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Hotfix, 'intermediate'>>;
+export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Hotfix, 'intermediate' | 'tags'>>;
 export class Hotfix {
     public name: string;
     public branchName: string;
     public sourceSha: string;
     public upstream?: string;
     public intermediate: boolean;
+    public tags: Tagging[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigHotfixSchema.parse(value));
     }
     public static fromSchema(value: Zod.infer<typeof ConfigHotfixSchema>) {
         return new this({
-            ...value
+            ...value,
+            tags: value.tags?.map(t => Tagging.fromSchema(t))
         });
     }
 
@@ -217,6 +238,7 @@ export class Hotfix {
         this.sourceSha = params.sourceSha;
         this.upstream = params.upstream;
         this.intermediate = params.intermediate ?? false;
+        this.tags = params.tags ?? [];
     }
 
     public toJSON() {
@@ -268,3 +290,110 @@ export class Support {
 }
 export interface Support extends SupportBase {}
 applyMixins(Support, [ SupportBase ]);
+
+export type IntegrationParams = Pick<Integration, 'plugin' | 'options'>;
+export class Integration {
+    public plugin: string;
+    public options: Record<string, unknown>;
+
+    #initialized: boolean = false;
+
+    #parentConfig!: Config;
+    public get parentConfig() {
+        if (!this.#initialized)
+            throw new Error('Not initialized');
+
+        return this.#parentConfig;
+    }
+
+    public static parse(value: unknown) {
+        return this.fromSchema(ConfigIntegrationSchema.parse(value));
+    }
+    public static fromSchema(value: Zod.infer<typeof ConfigIntegrationSchema>) {
+        return new this({
+            ...value,
+            options: { ...value.options }
+        });
+    }
+
+    public constructor(params: IntegrationParams) {
+        this.plugin = params.plugin;
+        this.options = params.options;
+    }
+
+    public async register(parentConfig: Config) {
+        this.#initialized = true;
+
+        this.#parentConfig = parentConfig;
+    }
+}
+export interface Integration extends IntegrationBase {}
+applyMixins(Integration, [ IntegrationBase ]);
+
+export type TaggingParams = Pick<Tagging, 'name' | 'annotation'>;
+export class Tagging {
+    public name: string;
+    public annotation?: string;
+
+    public static parse(value: unknown) {
+        return this.fromSchema(ConfigTaggingSchema.parse(value));
+    }
+    public static fromSchema(value: Zod.infer<typeof ConfigTaggingSchema>) {
+        return new this({
+            ...value
+        });
+    }
+
+    public constructor(params: TaggingParams) {
+        this.name = params.name;
+        this.annotation = params.annotation;
+    }
+}
+export interface Tagging extends TaggingBase {}
+applyMixins(Tagging, [ TaggingBase ]);
+
+export type MessageTemplateParams = Pick<MessageTemplate, 'name' | 'message'>;
+export class MessageTemplate {
+    public name: string;
+    public message: string;
+
+    public static parse(value: unknown) {
+        return this.fromSchema(ConfigMessageTemplate.parse(value));
+    }
+    public static fromSchema(value: Zod.infer<typeof ConfigMessageTemplate>) {
+        return new this({
+            ...value
+        });
+    }
+
+    public constructor(params: MessageTemplateParams) {
+        this.name = params.name;
+        this.message = params.message;
+    }
+}
+export interface MessageTemplate extends MessageTemplateBase {}
+applyMixins(MessageTemplate, [ MessageTemplateBase ]);
+
+export type TagTemplateParams = Pick<TagTemplate, 'name' | 'tag' | 'annotation'>;
+export class TagTemplate {
+    public name: string;
+    public tag: string;
+    public annotation?: string;
+
+    public static parse(value: unknown) {
+        return this.fromSchema(ConfigTagTemplate.parse(value));
+    }
+    public static fromSchema(value: Zod.infer<typeof ConfigTagTemplate>) {
+        return new this({
+            ...value
+        });
+    }
+
+    public constructor(params: TagTemplateParams) {
+        this.name = params.name;
+        this.tag = params.tag;
+        this.annotation = params.annotation;
+    }
+}
+export interface TagTemplate extends TagTemplateBase {}
+applyMixins(TagTemplate, [ TagTemplateBase ]);

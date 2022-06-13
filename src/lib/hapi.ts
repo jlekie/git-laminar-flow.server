@@ -27,10 +27,10 @@ export async function createHapiServer({ host, port, serverName, config, registr
     const server = Hapi.server({
         host,
         port,
-        debug: false
-        // debug: {
-        //     request: [ 'error' ]
-        // }
+        // debug: false
+        debug: {
+            request: [ 'error' ]
+        }
     });
 
     if (apiKey) {
