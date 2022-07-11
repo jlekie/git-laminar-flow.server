@@ -37,6 +37,7 @@
     "lodash": "^4.17.21",
     "minimatch": "^5.0.1",
     "source-map-support": "^0.5.21",
+    "strongly-typed-events": "^3.0.3",
     "tmp-promise": "^3.0.3",
     "typanion": "^3.7.1",
     "uuid": "^8.3.2",

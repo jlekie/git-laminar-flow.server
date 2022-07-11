@@ -28,7 +28,9 @@ export class StartCommand extends Command {
 
     public async execute() {
         const config = await loadConfig(this.config);
+
         const registry = await createRegistry(config);
+        registry.onResolvedBackend.subscribe(({ registry, namespace, name, backendName }) => this.context.stdout.write(Chalk.gray(`Resolved backend for [${registry}/${namespace}/${name}]: ${backendName}`) + '\n'))
 
         // const azureBackend = config.storageBackends.find(b => b.name === 'azure');
         // if (azureBackend) {
