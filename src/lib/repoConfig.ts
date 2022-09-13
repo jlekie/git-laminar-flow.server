@@ -19,7 +19,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'version' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'version' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName'>>;
 export class Config {
     public identifier: string;
     public managed: boolean;
@@ -41,6 +41,8 @@ export class Config {
     public integrations: Integration[]
     public commitMessageTemplates: MessageTemplate[];
     public tagTemplates: TagTemplate[];
+    public masterBranchName?: string;
+    public developBranchName?: string;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -105,6 +107,9 @@ export class Config {
 
         this.commitMessageTemplates = params.commitMessageTemplates ?? [];
         this.tagTemplates = params.tagTemplates ?? [];
+
+        this.masterBranchName = params.masterBranchName;
+        this.developBranchName = params.developBranchName;
     }
 
     public toJSON() {
