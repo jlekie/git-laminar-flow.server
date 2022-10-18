@@ -2,6 +2,7 @@ import * as Zod from 'zod';
 
 import * as Hapi from '@hapi/hapi';
 import * as BasicAuth from '@hapi/basic';
+import * as Boom from '@hapi/boom';
 
 import * as Glf from '@jlekie/git-laminar-flow';
 
@@ -9,6 +10,8 @@ import { loadNpmPackage } from './package';
 import { Config } from './config';
 import { Config as RepoConfig } from './repoConfig';
 import { Registry } from './registry';
+
+import * as Semver from 'semver';
 
 export type T = Hapi.Auth
 
@@ -77,13 +80,28 @@ export async function createHapiServer({ host, port, serverName, config, registr
 export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
     name: 'api',
     register: async (server, { registry, auth }) => {
+        const validateVersion: Hapi.Lifecycle.Method = (req, h) => {
+            const reqApiVersion = Semver.coerce(req.headers['glf-api-version'] ?? 'v0')?.toString();
+            if (!reqApiVersion)
+                throw Boom.badRequest(`request api version ${req.headers['glf-api-version']} invalid`);
+            if (!Semver.eq(reqApiVersion, Glf.resolveApiVersion()))
+                throw Boom.badRequest(`request api version ${reqApiVersion} incompatible with server api version ${Glf.resolveApiVersion()}`);
+
+            return h.continue;
+        }
+
         server.route({
             method: 'GET',
             path: '/',
-            handler: async (req, res) => {
-                return {
+            options: {
+                pre: [
+                    { method: validateVersion }
+                ]
+            },
+            handler: async (req, h) => {
+                return h.response({
                     identifier: 'Test'
-                }
+                });
             }
         });
 
@@ -95,13 +113,18 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
                     ? await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name)
                     : ('ensure' in req.query ? RepoConfig.createNew() : undefined);
 
-                if (config)
-                    return h.response(config.toHash()).etag(config.calculateHash());
-                else
+                if (!config)
                     return h.response().code(404);
+                if (Semver.gt(config.resolveApiVersion(), Glf.resolveApiVersion()))
+                    return h.response(`config api version ${config.resolveApiVersion()} incompatible with server api version ${Glf.resolveApiVersion()}`).code(400);
+
+                return h.response(config.toHash()).etag(config.calculateHash());
             },
             options: {
-                auth
+                auth,
+                pre: [
+                    { method: validateVersion }
+                ]
             }
         });
 
@@ -128,7 +151,10 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
                 return h.response();
             },
             options: {
-                auth
+                auth,
+                pre: [
+                    { method: validateVersion }
+                ]
             }
         });
 
@@ -140,7 +166,6 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
                     const sourceConfig = await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name);
 
                     const sourceConfigHash = sourceConfig?.calculateHash();
-
                     if (sourceConfigHash && sourceConfigHash !== req.headers['if-match'])
                         return h.response().code(412);
 
@@ -153,7 +178,10 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
                 }
             },
             options: {
-                auth
+                auth,
+                pre: [
+                    { method: validateVersion }
+                ]
             }
         });
     }

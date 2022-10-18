@@ -4,7 +4,8 @@ import { v4 as Uuid } from 'uuid';
 
 import {
     ConfigSchema, ConfigSubmoduleSchema, ConfigFeatureSchema, ConfigReleaseSchema, ConfigHotfixSchema, ConfigSupportSchema, ConfigIntegrationSchema, ConfigTaggingSchema, ConfigMessageTemplate, ConfigTagTemplate,
-    ConfigBase, SubmoduleBase, FeatureBase, ReleaseBase, HotfixBase, SupportBase, IntegrationBase, TaggingBase, MessageTemplateBase, TagTemplateBase
+    ConfigBase, SubmoduleBase, FeatureBase, ReleaseBase, HotfixBase, SupportBase, IntegrationBase, TaggingBase, MessageTemplateBase, TagTemplateBase,
+    resolveApiVersion
 } from '@jlekie/git-laminar-flow';
 
 function applyMixins(derivedCtor: any, constructors: any[]) {
@@ -19,8 +20,9 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'version' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'apiVersion' | 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'version' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName' | 'dependencies'>>;
 export class Config {
+    public apiVersion?: string;
     public identifier: string;
     public managed: boolean;
     public version?: string;
@@ -43,6 +45,7 @@ export class Config {
     public tagTemplates: TagTemplate[];
     public masterBranchName?: string;
     public developBranchName?: string;
+    public dependencies: string[];
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -69,6 +72,7 @@ export class Config {
 
     public static createNew() {
         return new Config({
+            apiVersion: resolveApiVersion(),
             identifier: Uuid().replace(/-/g, ''),
             upstreams: [],
             submodules: [],
@@ -83,6 +87,7 @@ export class Config {
     }
 
     public constructor(params: ConfigParams) {
+        this.apiVersion = params.apiVersion;
         this.identifier = params.identifier;
         this.upstreams = params.upstreams;
         this.submodules = params.submodules;
@@ -110,6 +115,8 @@ export class Config {
 
         this.masterBranchName = params.masterBranchName;
         this.developBranchName = params.developBranchName;
+
+        this.dependencies = params.dependencies ?? [];
     }
 
     public toJSON() {

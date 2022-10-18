@@ -10,7 +10,9 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { S3, GetObjectCommand, HeadObjectCommand, ListObjectsCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
 import Axios from 'axios';
 
-import { ConfigSchema as RepoConfigSchema } from '@jlekie/git-laminar-flow';
+import * as Semver from 'semver';
+
+import { ConfigSchema as RepoConfigSchema, resolveApiVersion } from '@jlekie/git-laminar-flow';
 
 import { Config } from './config';
 import { Config as RepoConfig } from './repoConfig';
@@ -262,6 +264,13 @@ export class AzureBlobStorage extends StorageBase {
         const containerClient = this.#absClient.getContainerClient(this.containerName);
         const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}.json`));
 
+        const properties = await blobClient.getProperties();
+        const glfVersion = Semver.coerce(properties.metadata?.['glf_api_version'] ?? 'v0')?.toString()
+        if (!glfVersion)
+            throw new Error(`Bad metadata for version ${properties.metadata?.['glf_api_version']}`);
+        if (Semver.gt(glfVersion, resolveApiVersion()))
+            throw new Error(`Config api version ${glfVersion} incompatible with server api version ${resolveApiVersion()}`);
+
         const buffer = await blobClient.downloadToBuffer(0);
         const config = RepoConfig.parse(JSON.parse(buffer.toString('utf8')));
 
@@ -273,8 +282,11 @@ export class AzureBlobStorage extends StorageBase {
 
         const content = JSON.stringify(config);
         await blobClient.upload(content, content.length, {
+            metadata: {
+                'glf_api_version': resolveApiVersion()
+            },
             blobHTTPHeaders: {
-                blobContentType: 'application/json'
+                blobContentType: 'application/json',
             }
         });
     }
@@ -347,6 +359,12 @@ export class S3Storage extends StorageBase {
             Key: `${namespace}/${name}.json`
         }));
 
+        const glfVersion = Semver.coerce(response.Metadata?.['glf-api-version'] ?? 'v0')?.toString();
+        if (!glfVersion)
+            throw new Error(`Bad metadata for version ${response.Metadata?.['glf-api-version']}`);
+        if (Semver.gt(glfVersion, resolveApiVersion()))
+            throw new Error(`Config api version ${glfVersion} incompatible with server api version ${resolveApiVersion()}`);
+
         const content = await streamToString(response.Body as Readable);
         const config = RepoConfig.parse(JSON.parse(content));
 
@@ -357,7 +375,10 @@ export class S3Storage extends StorageBase {
             Bucket: this.bucket,
             Key: `${namespace}/${name}.json`,
             Body: JSON.stringify(config),
-            ContentType: 'application/json'
+            ContentType: 'application/json',
+            Metadata: {
+                'glf-api-version': resolveApiVersion()
+            }
         }));
     }
     public async deleteConfig(namespace: string, name: string): Promise<void> {
