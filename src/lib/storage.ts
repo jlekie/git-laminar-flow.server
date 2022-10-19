@@ -12,7 +12,7 @@ import Axios from 'axios';
 
 import * as Semver from 'semver';
 
-import { ConfigSchema as RepoConfigSchema, resolveApiVersion } from '@jlekie/git-laminar-flow';
+import { ConfigSchema as RepoConfigSchema, resolveApiVersion, API_VERSION } from '@jlekie/git-laminar-flow';
 
 import { Config } from './config';
 import { Config as RepoConfig } from './repoConfig';
@@ -283,7 +283,7 @@ export class AzureBlobStorage extends StorageBase {
         const content = JSON.stringify(config);
         await blobClient.upload(content, content.length, {
             metadata: {
-                'glf_api_version': resolveApiVersion()
+                'glf_api_version': API_VERSION
             },
             blobHTTPHeaders: {
                 blobContentType: 'application/json',
@@ -377,7 +377,7 @@ export class S3Storage extends StorageBase {
             Body: JSON.stringify(config),
             ContentType: 'application/json',
             Metadata: {
-                'glf-api-version': resolveApiVersion()
+                'glf-api-version': API_VERSION
             }
         }));
     }

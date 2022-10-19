@@ -1,6 +1,6 @@
 {
   "name": "@jlekie/git-laminar-flow-server",
-  "version": "1.0.0-alpha.15",
+  "version": "1.0.0-alpha.16",
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,7 @@
     "@hapi/basic": "^6.0.0",
     "@hapi/boom": "^9.1.4",
     "@hapi/hapi": "^20.2.1",
-    "@jlekie/git-laminar-flow": "workspace:*",
+    "@jlekie/git-laminar-flow": "workspace:^",
     "axios": "^0.27.2",
     "bluebird": "^3.7.2",
     "chalk": "^4.1.2",
