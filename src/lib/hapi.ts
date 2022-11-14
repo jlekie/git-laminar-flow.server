@@ -114,9 +114,9 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
                     : ('ensure' in req.query ? RepoConfig.createNew() : undefined);
 
                 if (!config)
-                    return h.response().code(404);
+                    throw Boom.notFound(`no config defined`);
                 if (Semver.gt(config.resolveApiVersion(), Glf.resolveApiVersion()))
-                    return h.response(`config api version ${config.resolveApiVersion()} incompatible with server api version ${Glf.resolveApiVersion()}`).code(400);
+                    throw Boom.badRequest(`config api version ${config.resolveApiVersion()} incompatible with server api version ${Glf.resolveApiVersion()}`);
 
                 return h.response(config.toHash()).etag(config.calculateHash());
             },
@@ -138,7 +138,7 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
                 const sourceConfigHash = sourceConfig?.calculateHash();
 
                 if (sourceConfigHash && sourceConfigHash !== req.headers['if-match'])
-                    return h.response().code(412);
+                    throw Boom.preconditionFailed(`hash check failed`);
 
                 const config = RepoConfig.parse(req.payload);
                 const configHash = config.calculateHash();
@@ -167,14 +167,14 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
 
                     const sourceConfigHash = sourceConfig?.calculateHash();
                     if (sourceConfigHash && sourceConfigHash !== req.headers['if-match'])
-                        return h.response().code(412);
+                        throw Boom.preconditionFailed(`hash check failed`);
 
                     await registry.deleteRepoConfig(req.params.registry, req.params.namespace, req.params.name);
 
                     return h.response();
                 }
                 else {
-                    return h.response().code(404);
+                    throw Boom.notFound(`no config defined`);
                 }
             },
             options: {

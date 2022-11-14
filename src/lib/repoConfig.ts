@@ -20,12 +20,13 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'apiVersion' | 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'version' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName' | 'dependencies'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'apiVersion' | 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'developVersion' | 'masterVersion' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName' | 'dependencies'>>;
 export class Config {
     public apiVersion?: string;
     public identifier: string;
     public managed: boolean;
-    public version?: string;
+    public developVersion?: string;
+    public masterVersion?: string;
     public upstreams: Array<{ name: string, url: string }>;
     public submodules: Submodule[];
     public features: Feature[];
@@ -64,7 +65,10 @@ export class Config {
             tags: value.tags?.slice() ?? [],
             integrations: value.integrations?.map(i => Integration.fromSchema(i)),
             commitMessageTemplates: value.commitMessageTemplates?.map(i => MessageTemplate.fromSchema(i)),
-            tagTemplates: value.tagTemplates?.map(i => TagTemplate.fromSchema(i))
+            tagTemplates: value.tagTemplates?.map(i => TagTemplate.fromSchema(i)),
+
+            developVersion: value.developVersion ?? value.version,
+            masterVersion: value.masterVersion ?? value.version
         });
 
         return config;
@@ -104,7 +108,8 @@ export class Config {
         this.hotfixTagTemplate = params.hotfixTagTemplate;
 
         this.managed = params.managed ?? true;
-        this.version = params.version;
+        this.developVersion = params.developVersion;
+        this.masterVersion = params.masterVersion;
 
         this.tags = params.tags ?? [];
 
@@ -157,11 +162,12 @@ export class Submodule {
 export interface Submodule extends SubmoduleBase {}
 applyMixins(Submodule, [ SubmoduleBase ]);
 
-export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Feature, 'tags'>>;
+export type FeatureParams = Pick<Feature, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Feature, 'tags' | 'version'>>;
 export class Feature {
     public name: string;
     public branchName: string;
     public sourceSha: string;
+    public version?: string;
     public upstream?: string;
     public tags: Tagging[];
 
@@ -179,6 +185,7 @@ export class Feature {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
+        this.version = params.version;
         this.upstream = params.upstream;
         this.tags = params.tags ?? [];
     }
@@ -190,11 +197,12 @@ export class Feature {
 export interface Feature extends FeatureBase {}
 applyMixins(Feature, [ FeatureBase ]);
 
-export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Release, 'intermediate' | 'tags'>>;
+export type ReleaseParams = Pick<Release, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Release, 'intermediate' | 'tags' | 'version'>>;
 export class Release {
     public name: string;
     public branchName: string;
     public sourceSha: string;
+    public version?: string;
     public upstream?: string;
     public intermediate: boolean;
     public tags: Tagging[];
@@ -213,6 +221,7 @@ export class Release {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
+        this.version = params.version;
         this.upstream = params.upstream;
         this.intermediate = params.intermediate ?? false;
         this.tags = params.tags ?? [];
@@ -225,11 +234,12 @@ export class Release {
 export interface Release extends ReleaseBase {}
 applyMixins(Release, [ ReleaseBase ]);
 
-export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Hotfix, 'intermediate' | 'tags'>>;
+export type HotfixParams = Pick<Hotfix, 'name' | 'branchName' | 'sourceSha' | 'upstream'> & Partial<Pick<Hotfix, 'intermediate' | 'tags' | 'version'>>;
 export class Hotfix {
     public name: string;
     public branchName: string;
     public sourceSha: string;
+    public version?: string;
     public upstream?: string;
     public intermediate: boolean;
     public tags: Tagging[];
@@ -248,6 +258,7 @@ export class Hotfix {
         this.name = params.name;
         this.branchName = params.branchName;
         this.sourceSha = params.sourceSha;
+        this.version = params.version;
         this.upstream = params.upstream;
         this.intermediate = params.intermediate ?? false;
         this.tags = params.tags ?? [];
@@ -260,12 +271,14 @@ export class Hotfix {
 export interface Hotfix extends HotfixBase {}
 applyMixins(Hotfix, [ HotfixBase ]);
 
-export type SupportParams = Pick<Support, 'name' | 'masterBranchName' | 'developBranchName' | 'sourceSha' | 'features' | 'releases' | 'hotfixes' | 'upstream'>;
+export type SupportParams = Pick<Support, 'name' | 'masterBranchName' | 'developBranchName' | 'sourceSha' | 'features' | 'releases' | 'hotfixes' | 'upstream'> & Partial<Pick<Support, 'developVersion' | 'masterVersion'>>;
 export class Support {
     public name: string;
     public masterBranchName: string;
     public developBranchName: string;
     public sourceSha: string;
+    public developVersion?: string;
+    public masterVersion?: string;
     public upstream?: string;
 
     public features: Feature[];
@@ -289,6 +302,8 @@ export class Support {
         this.masterBranchName = params.masterBranchName;
         this.developBranchName = params.developBranchName;
         this.sourceSha = params.sourceSha;
+        this.developVersion = params.developVersion;
+        this.masterVersion = params.masterVersion;
         this.upstream = params.upstream;
 
         this.features = params.features;
