@@ -1,6 +1,6 @@
 {
   "name": "@jlekie/git-laminar-flow-server",
-  "version": "1.0.0-alpha.17",
+  "version": "1.0.0-alpha.21",
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,7 +9,7 @@
     "build": "tsc --build",
     "watch": "tsc --watch --preserveWatchOutput",
     "start": "git-laminar-flow-server start",
-    "start:dev": "nodemon --watch dist --exec 'yarn start --port=8080'",
+    "start:dev": "nodemon --watch dist --exec 'yarn start --port=8081'",
     "publish": "yarn npm publish --access=public"
   },
   "files": [

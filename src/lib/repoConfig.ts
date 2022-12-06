@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import * as Zod from 'zod';
 
 import { v4 as Uuid } from 'uuid';
@@ -20,7 +21,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
 }
 
-export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'apiVersion' | 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'developVersion' | 'masterVersion' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName' | 'dependencies'>>;
+export type ConfigParams = Pick<Config, 'identifier' | 'upstreams' | 'submodules' | 'features' | 'releases' | 'hotfixes' | 'supports' | 'included' | 'excluded'> & Partial<Pick<Config, 'apiVersion' | 'featureMessageTemplate' | 'releaseMessageTemplate' | 'hotfixMessageTemplate' | 'releaseTagTemplate' | 'hotfixTagTemplate' | 'managed' | 'developVersion' | 'masterVersion' | 'tags' | 'integrations' | 'commitMessageTemplates' | 'tagTemplates' | 'masterBranchName' | 'developBranchName' | 'dependencies' | 'labels'>>;
 export class Config {
     public apiVersion?: string;
     public identifier: string;
@@ -47,6 +48,7 @@ export class Config {
     public masterBranchName?: string;
     public developBranchName?: string;
     public dependencies: string[];
+    public labels: Record<string, string | string[]>;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -122,6 +124,8 @@ export class Config {
         this.developBranchName = params.developBranchName;
 
         this.dependencies = params.dependencies ?? [];
+
+        this.labels = params.labels ?? {};
     }
 
     public toJSON() {
@@ -131,12 +135,13 @@ export class Config {
 export interface Config extends ConfigBase {}
 applyMixins(Config, [ ConfigBase ]);
 
-export type SubmoduleParams = Pick<Submodule, 'name' | 'path' | 'url'> & Partial<Pick<Submodule, 'tags'>>;
+export type SubmoduleParams = Pick<Submodule, 'name' | 'path' | 'url'> & Partial<Pick<Submodule, 'tags' | 'labels'>>;
 export class Submodule {
     public name: string;
     public path: string;
     public url?: string;
     public tags: string[];
+    public labels: Record<string, string | string[]>;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSubmoduleSchema.parse(value));
@@ -153,6 +158,7 @@ export class Submodule {
         this.path = params.path;
         this.url = params.url;
         this.tags = params.tags ?? [];
+        this.labels = params.labels ?? {};
     }
 
     public toJSON() {

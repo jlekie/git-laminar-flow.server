@@ -33,6 +33,16 @@ export async function createHapiServer({ host, port, serverName, config, registr
         // debug: false
         debug: {
             request: [ 'error' ]
+        },
+        routes: {
+            cors: {
+                origin: [ '*' ],
+                headers: [ 'Authorization', 'Glf-Api-Version' ],
+                exposedHeaders: [ 'Accept' ],
+                additionalExposedHeaders: [ 'Accept' ],
+                maxAge: 60,
+                credentials: true
+            }
         }
     });
 
