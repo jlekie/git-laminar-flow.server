@@ -47,7 +47,7 @@ export class Config {
     public tagTemplates: TagTemplate[];
     public masterBranchName?: string;
     public developBranchName?: string;
-    public dependencies: string[];
+    public dependencies: (string | Record<string, string>)[];
     public labels: Record<string, string | string[]>;
 
     public static parse(value: unknown) {

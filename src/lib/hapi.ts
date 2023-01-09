@@ -117,10 +117,10 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
 
         server.route({
             method: 'GET',
-            path: '/{registry}/{namespace}/{name}',
+            path: '/{registry}/{namespace}/{name}/{support?}',
             handler: async (req, h) => {
-                const config = await registry.repoConfigExists(req.params.registry, req.params.namespace, req.params.name)
-                    ? await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name)
+                const config = await registry.repoConfigExists(req.params.registry, req.params.namespace, req.params.name, req.params.support)
+                    ? await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name, req.params.support)
                     : ('ensure' in req.query ? RepoConfig.createNew() : undefined);
 
                 if (!config)
@@ -140,10 +140,10 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
 
         server.route({
             method: 'PUT',
-            path: '/{registry}/{namespace}/{name}',
+            path: '/{registry}/{namespace}/{name}/{support?}',
             handler: async (req, h) => {
-                const sourceConfig = await registry.repoConfigExists(req.params.registry, req.params.namespace, req.params.name)
-                    ? await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name)
+                const sourceConfig = await registry.repoConfigExists(req.params.registry, req.params.namespace, req.params.name, req.params.support)
+                    ? await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name, req.params.support)
                     : null;
                 const sourceConfigHash = sourceConfig?.calculateHash();
 
@@ -155,7 +155,7 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
 
                 if (configHash !== sourceConfigHash) {
                     // console.log(`Saving config <${configHash}>`);
-                    await registry.saveRepoConfig(req.params.registry, req.params.namespace, req.params.name, config);
+                    await registry.saveRepoConfig(config, req.params.registry, req.params.namespace, req.params.name, req.params.support);
                 }
 
                 return h.response();
@@ -170,16 +170,16 @@ export const apiPlugin: Hapi.Plugin<{ registry: Registry, auth?: string }> = {
 
         server.route({
             method: 'DELETE',
-            path: '/{registry}/{namespace}/{name}',
+            path: '/{registry}/{namespace}/{name}/{support?}',
             handler: async (req, h) => {
-                if (await registry.repoConfigExists(req.params.registry, req.params.namespace, req.params.name)) {
-                    const sourceConfig = await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name);
+                if (await registry.repoConfigExists(req.params.registry, req.params.namespace, req.params.name, req.params.support)) {
+                    const sourceConfig = await registry.loadRepoConfig(req.params.registry, req.params.namespace, req.params.name, req.params.support);
 
                     const sourceConfigHash = sourceConfig?.calculateHash();
                     if (sourceConfigHash && sourceConfigHash !== req.headers['if-match'])
                         throw Boom.preconditionFailed(`hash check failed`);
 
-                    await registry.deleteRepoConfig(req.params.registry, req.params.namespace, req.params.name);
+                    await registry.deleteRepoConfig(req.params.registry, req.params.namespace, req.params.name, req.params.support);
 
                     return h.response();
                 }

@@ -90,12 +90,10 @@ export abstract class StorageBase {
         this.#parentConfig = params.parentConfig;
     }
 
-    public abstract aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>): Promise<void>;
-
-    public abstract configExists(namespace: string, name: string): Promise<boolean>;
-    public abstract loadConfig(namespace: string, name: string): Promise<RepoConfig>;
-    public abstract saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void>;
-    public abstract deleteConfig(namespace: string, name: string): Promise<void>;
+    public abstract configExists(namespace: string, name: string, support?: string): Promise<boolean>;
+    public abstract loadConfig(namespace: string, name: string, support?: string): Promise<RepoConfig>;
+    public abstract saveConfig(config: RepoConfig, namespace: string, name: string, support?: string): Promise<void>;
+    public abstract deleteConfig(namespace: string, name: string, support?: string): Promise<void>;
     // public abstract lockConfig(namespace: string, name: string): Promise<void>;
     // public abstract unlockConfig(namespace: string, name: string): Promise<void>;
 }
@@ -121,49 +119,49 @@ export class FileStorage extends StorageBase {
         this.reposPath = params.reposPath;
     }
 
-    public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
-        const [configPath, lockPath] = this.resolveConfigPaths(namespace, name);
+    // public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+    //     const [configPath, lockPath] = this.resolveConfigPaths(namespace, name);
 
-        if (!await FS.pathExists(configPath))
-            throw new Error(`Config does not exist [${configPath}]`);
+    //     if (!await FS.pathExists(configPath))
+    //         throw new Error(`Config does not exist [${configPath}]`);
 
-        // Create lockfile
-        await FS.ensureFile(lockPath);
+    //     // Create lockfile
+    //     await FS.ensureFile(lockPath);
 
-        // Load config from disk
-        const config = await FS.readFile(configPath, 'utf8')
-            .then(content => Yaml.load(content))
-            .then(hash => RepoConfig.parse(hash));
+    //     // Load config from disk
+    //     const config = await FS.readFile(configPath, 'utf8')
+    //         .then(content => Yaml.load(content))
+    //         .then(hash => RepoConfig.parse(hash));
 
-        // Handle config
-        const updatedConfig = await cb(config);
+    //     // Handle config
+    //     const updatedConfig = await cb(config);
 
-        // Write config to disk
-        if (updatedConfig) {
-            const content = Yaml.dump(updatedConfig);
-            await FS.writeFile(configPath, content, 'utf8');
-        }
+    //     // Write config to disk
+    //     if (updatedConfig) {
+    //         const content = Yaml.dump(updatedConfig);
+    //         await FS.writeFile(configPath, content, 'utf8');
+    //     }
 
-        // Remove lockfile
-        await FS.remove(lockPath);
-    }
-    public async configExists(namespace: string, name: string): Promise<boolean> {
+    //     // Remove lockfile
+    //     await FS.remove(lockPath);
+    // }
+    public async configExists(namespace: string, name: string, support?: string): Promise<boolean> {
         throw new Error('Not Implemented');
     }
-    public async loadConfig(namespace: string, name: string): Promise<RepoConfig> {
+    public async loadConfig(namespace: string, name: string, support?: string): Promise<RepoConfig> {
         throw new Error('Not Implemented');
     }
-    public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
+    public async saveConfig(config: RepoConfig, namespace: string, name: string, support?: string): Promise<void> {
         throw new Error('Not Implemented');
     }
-    public async deleteConfig(namespace: string, name: string): Promise<void> {
+    public async deleteConfig(namespace: string, name: string, support?: string): Promise<void> {
         throw new Error('Not Implemented');
     }
 
-    private resolveConfigPaths(namespace: string, name: string) {
+    private resolveConfigPaths(namespace: string, name: string, support?: string) {
         return [
-            Path.resolve('.gitflow', Path.normalize(`configs/${namespace}/${name}/gitflow.yml`).replace(/^(\.\.(\/|\\|$))+/, '')),
-            Path.resolve('.gitflow', Path.normalize(`configs/${namespace}/${name}/gitflow.yml.lock`).replace(/^(\.\.(\/|\\|$))+/, ''))
+            Path.resolve('.gitflow', Path.normalize(`configs/${namespace}/${name}${support ? `/${support}` : ''}/gitflow.yml`).replace(/^(\.\.(\/|\\|$))+/, '')),
+            Path.resolve('.gitflow', Path.normalize(`configs/${namespace}/${name}${support ? `/${support}` : ''}/gitflow.yml.lock`).replace(/^(\.\.(\/|\\|$))+/, ''))
         ] as const;
     }
 }
@@ -224,45 +222,45 @@ export class AzureBlobStorage extends StorageBase {
         this.#absClient = BlobServiceClient.fromConnectionString(this.connectionString);
     }
 
-    public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+    // public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+    //     const containerClient = this.#absClient.getContainerClient(this.containerName);
+    //     const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}.json`));
+    //     const leaseClient = blobClient.getBlobLeaseClient(this.leaseId);
+
+    //     const leaseResponse = await leaseClient.acquireLease(-1);
+
+    //     const buffer = await blobClient.downloadToBuffer(0, undefined, {
+    //         conditions: {
+    //             leaseId: leaseResponse.leaseId
+    //         }
+    //     });
+    //     const config = RepoConfig.parse(JSON.parse(buffer.toString('utf8')));
+
+    //     const updatedConfig = await cb(config);
+
+    //     if (updatedConfig) {
+    //         const content = JSON.stringify(updatedConfig);
+    //         await blobClient.upload(content, content.length, {
+    //             blobHTTPHeaders: {
+    //                 blobContentType: 'application/json'
+    //             },
+    //             conditions: {
+    //                 leaseId: leaseResponse.leaseId
+    //             }
+    //         });
+    //     }
+
+    //     await leaseClient.releaseLease();
+    // }
+    public async configExists(namespace: string, name: string, support?: string): Promise<boolean> {
         const containerClient = this.#absClient.getContainerClient(this.containerName);
-        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}.json`));
-        const leaseClient = blobClient.getBlobLeaseClient(this.leaseId);
-
-        const leaseResponse = await leaseClient.acquireLease(-1);
-
-        const buffer = await blobClient.downloadToBuffer(0, undefined, {
-            conditions: {
-                leaseId: leaseResponse.leaseId
-            }
-        });
-        const config = RepoConfig.parse(JSON.parse(buffer.toString('utf8')));
-
-        const updatedConfig = await cb(config);
-
-        if (updatedConfig) {
-            const content = JSON.stringify(updatedConfig);
-            await blobClient.upload(content, content.length, {
-                blobHTTPHeaders: {
-                    blobContentType: 'application/json'
-                },
-                conditions: {
-                    leaseId: leaseResponse.leaseId
-                }
-            });
-        }
-
-        await leaseClient.releaseLease();
-    }
-    public async configExists(namespace: string, name: string): Promise<boolean> {
-        const containerClient = this.#absClient.getContainerClient(this.containerName);
-        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}.json`));
+        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}${support ? `/${support}` : ''}.json`));
 
         return blobClient.exists();
     }
-    public async loadConfig(namespace: string, name: string): Promise<RepoConfig> {
+    public async loadConfig(namespace: string, name: string, support?: string): Promise<RepoConfig> {
         const containerClient = this.#absClient.getContainerClient(this.containerName);
-        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}.json`));
+        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}${support ? `/${support}` : ''}.json`));
 
         const properties = await blobClient.getProperties();
         const glfVersion = Semver.coerce(properties.metadata?.['glf_api_version'] ?? 'v0')?.toString()
@@ -276,9 +274,9 @@ export class AzureBlobStorage extends StorageBase {
 
         return config;
     }
-    public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
+    public async saveConfig(config: RepoConfig, namespace: string, name: string, support?: string): Promise<void> {
         const containerClient = this.#absClient.getContainerClient(this.containerName);
-        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}.json`));
+        const blobClient = containerClient.getBlockBlobClient(Path.normalize(`${namespace}/${name}${support ? `/${support}` : ''}.json`));
 
         const content = JSON.stringify(config);
         await blobClient.upload(content, content.length, {
@@ -290,7 +288,7 @@ export class AzureBlobStorage extends StorageBase {
             }
         });
     }
-    public async deleteConfig(namespace: string, name: string): Promise<void> {
+    public async deleteConfig(namespace: string, name: string, support?: string): Promise<void> {
         throw new Error('Not Implemented');
     }
 }
@@ -344,19 +342,19 @@ export class S3Storage extends StorageBase {
         });
     }
 
-    public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
-        throw new Error('Not Implemented');
-    }
-    public async configExists(namespace: string, name: string): Promise<boolean> {
+    // public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+    //     throw new Error('Not Implemented');
+    // }
+    public async configExists(namespace: string, name: string, support?: string): Promise<boolean> {
         return await this.#s3Client.send(new HeadObjectCommand({
             Bucket: this.bucket,
-            Key: `${namespace}/${name}.json`
+            Key: `${namespace}/${name}${support ? `/${support}` : ''}.json`
         })).then(() => true).catch(() => false);
     }
-    public async loadConfig(namespace: string, name: string): Promise<RepoConfig> {
+    public async loadConfig(namespace: string, name: string, support?: string): Promise<RepoConfig> {
         const response = await this.#s3Client.send(new GetObjectCommand({
             Bucket: this.bucket,
-            Key: `${namespace}/${name}.json`
+            Key: `${namespace}/${name}${support ? `/${support}` : ''}.json`
         }));
 
         const glfVersion = Semver.coerce(response.Metadata?.['glf-api-version'] ?? 'v0')?.toString();
@@ -370,10 +368,10 @@ export class S3Storage extends StorageBase {
 
         return config;
     }
-    public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
+    public async saveConfig(config: RepoConfig, namespace: string, name: string, support?: string): Promise<void> {
         await this.#s3Client.send(new PutObjectCommand({
             Bucket: this.bucket,
-            Key: `${namespace}/${name}.json`,
+            Key: `${namespace}/${name}${support ? `/${support}` : ''}.json`,
             Body: JSON.stringify(config),
             ContentType: 'application/json',
             Metadata: {
@@ -381,7 +379,7 @@ export class S3Storage extends StorageBase {
             }
         }));
     }
-    public async deleteConfig(namespace: string, name: string): Promise<void> {
+    public async deleteConfig(namespace: string, name: string, support?: string): Promise<void> {
         throw new Error('Not Implemented');
     }
 }
@@ -410,19 +408,19 @@ export class GlfsStorage extends StorageBase {
         this.apiKey = params.apiKey
     }
 
-    public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
-        throw new Error('Not Implemented');
-    }
-    public async configExists(namespace: string, name: string): Promise<boolean> {
-        return await Axios.head(`${this.url}/v1/${namespace}/${name}`, {
+    // public async aquireConfig(namespace: string, name: string, cb: (config?: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
+    //     throw new Error('Not Implemented');
+    // }
+    public async configExists(namespace: string, name: string, support?: string): Promise<boolean> {
+        return await Axios.head(`${this.url}/v1/${namespace}/${name}${support ? `/${support}` : ''}`, {
             auth: {
                 username: 'glf.server',
                 password: this.apiKey
             }
         }).then(() => true).catch(() => false);
     }
-    public async loadConfig(namespace: string, name: string): Promise<RepoConfig> {
-        const response = await Axios.get(`${this.url}/v1/${namespace}/${name}`, {
+    public async loadConfig(namespace: string, name: string, support?: string): Promise<RepoConfig> {
+        const response = await Axios.get(`${this.url}/v1/${namespace}/${name}${support ? `/${support}` : ''}`, {
             auth: {
                 username: 'glf.server',
                 password: this.apiKey
@@ -433,15 +431,15 @@ export class GlfsStorage extends StorageBase {
 
         return config;
     }
-    public async saveConfig(namespace: string, name: string, config: RepoConfig): Promise<void> {
-        await Axios.put(`${this.url}/v1/${namespace}/${name}`, config.toHash(), {
+    public async saveConfig(config: RepoConfig, namespace: string, name: string, support?: string): Promise<void> {
+        await Axios.put(`${this.url}/v1/${namespace}/${name}${support ? `/${support}` : ''}`, config.toHash(), {
             auth: {
                 username: 'glf.server',
                 password: this.apiKey
             }
         });
     }
-    public async deleteConfig(namespace: string, name: string): Promise<void> {
+    public async deleteConfig(namespace: string, name: string, support?: string): Promise<void> {
         throw new Error('Not Implemented');
     }
 }

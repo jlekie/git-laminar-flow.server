@@ -16,7 +16,7 @@ import { ConstructorParams } from './misc';
 export class Registry {
     public readonly config: Config;
 
-    #resolvedBackendDispatcher = new SimpleEventDispatcher<{ registry: string, namespace: string, name: string, backendName: string }>();
+    #resolvedBackendDispatcher = new SimpleEventDispatcher<{ registry: string, namespace: string, name: string, support?: string, backendName: string }>();
     public get onResolvedBackend() {
         return this.#resolvedBackendDispatcher.asEvent();
     }
@@ -25,39 +25,34 @@ export class Registry {
         this.config = params.config;
     }
 
-    public async repoConfigExists(registry: string, namespace: string, name: string) {
-        const backend = this.getBackend(registry, namespace, name);
+    public async repoConfigExists(registry: string, namespace: string, name: string, support?: string) {
+        const backend = this.getBackend(registry, namespace, name, support);
 
-        return backend.configExists(namespace, name);
+        return backend.configExists(namespace, name, support);
     }
-    public async loadRepoConfig(registry: string, namespace: string, name: string) {
-        const backend = this.getBackend(registry, namespace, name);
+    public async loadRepoConfig(registry: string, namespace: string, name: string, support?: string) {
+        const backend = this.getBackend(registry, namespace, name, support);
 
-        return backend.loadConfig(namespace, name);
+        return backend.loadConfig(namespace, name, support);
     }
-    public async saveRepoConfig(registry: string, namespace: string, name: string, config: RepoConfig) {
-        const backend = this.getBackend(registry, namespace, name);
+    public async saveRepoConfig(config: RepoConfig, registry: string, namespace: string, name: string, support?: string) {
+        const backend = this.getBackend(registry, namespace, name, support);
 
-        await backend.saveConfig(namespace, name, config);
+        await backend.saveConfig(config, namespace, name, support);
     }
-    public async deleteRepoConfig(registry: string, namespace: string, name: string) {
-        const backend = this.getBackend(registry, namespace, name);
+    public async deleteRepoConfig(registry: string, namespace: string, name: string, support?: string) {
+        const backend = this.getBackend(registry, namespace, name, support);
 
-        await backend.deleteConfig(namespace, name);
-    }
-    public async aquireRepoConfig(registry: string, namespace: string, name: string, cb: (config: RepoConfig) => void | RepoConfig | Promise<void | RepoConfig>) {
-        const backend = this.getBackend(registry, namespace, name);
-
-        await backend.aquireConfig(namespace, name, cb);
+        await backend.deleteConfig(namespace, name, support);
     }
 
-    private getBackend(registry: string, namespace: string, name: string) {
-        const backend = this.config.storageBackends.find(b => b.patterns.some(p => Minimatch(`${registry}/${namespace}/${name}`, p)));
+    private getBackend(registry: string, namespace: string, name: string, support?: string) {
+        const backend = this.config.storageBackends.find(b => b.patterns.some(p => Minimatch(`${registry}/${namespace}/${name}${support ? `/${support}` : ''}`, p)));
 
         if (!backend)
             throw new Error(`Could not find matching backend for ${registry}/${namespace}/${name}`);
 
-        this.#resolvedBackendDispatcher.dispatch({ registry, namespace, name, backendName: backend.name });
+        this.#resolvedBackendDispatcher.dispatch({ registry, namespace, name, support, backendName: backend.name });
         // console.log(`Resolved backend for [${registry}/${namespace}/${name}]: ${backend.name}`);
 
         return backend;
