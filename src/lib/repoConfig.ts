@@ -49,7 +49,7 @@ export class Config {
     public developBranchName?: string;
     public dependencies: (string | Record<string, string>)[];
     public labels: Record<string, string | string[]>;
-    public annotations: Record<string, string>;
+    public annotations: Record<string, unknown>;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSchema.parse(value));
@@ -144,7 +144,7 @@ export class Submodule {
     public url?: string;
     public tags: string[];
     public labels: Record<string, string | string[]>;
-    public annotations: Record<string, string>;
+    public annotations: Record<string, unknown>;
 
     public static parse(value: unknown) {
         return this.fromSchema(ConfigSubmoduleSchema.parse(value));
