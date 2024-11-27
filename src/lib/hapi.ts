@@ -65,13 +65,14 @@ export async function createHapiServer({ host, port, serverName, config, registr
         path: '/',
         handler: () => `Git Laminar Flow API Server v${npmPackage.version} "${serverName}"`
     });
-    server.route({
-        method: 'GET',
-        path: '/config',
-        handler: () => {
-            return config;
-        }
-    });
+    // JFC....
+    // server.route({
+    //     method: 'GET',
+    //     path: '/config',
+    //     handler: () => {
+    //         return config;
+    //     }
+    // });
 
     await server.register({
         plugin: apiPlugin,
